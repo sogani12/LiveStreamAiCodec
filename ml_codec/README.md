@@ -51,6 +51,23 @@ python -m ml_codec.tools.video_codec_tester --input test_video.mp4 --codec h264 
 python -m ml_codec.tools.video_codec_tester --input test_video.mp4 --codec h264 --bitrate 100
 ```
 
+### Step 4: Visualize Differences (Side-by-side)
+
+```bash
+# Display original vs decoded with heatmap
+python -m ml_codec.tools.compare_videos \
+    --original test_video.mp4 \
+    --test decoded.mp4 \
+    --show \
+    --diff
+
+# Save comparison video without showing UI
+python -m ml_codec.tools.compare_videos \
+    --original test_video.mp4 \
+    --test decoded.mp4 \
+    --save comparisons.mp4
+```
+
 ## What You'll See
 
 The codec tester shows:
@@ -100,8 +117,9 @@ ml_codec/
 ├── __init__.py
 ├── README.md (this file)
 ├── tools/
-│   ├── generate_test_video.py  - Create test videos
-│   └── video_codec_tester.py   - Test codecs with metrics
+│   ├── generate_test_video.py   - Create test videos
+│   ├── video_codec_tester.py    - Test codecs with metrics
+│   └── compare_videos.py        - Side-by-side visualization tool
 └── models/
     └── (ML models coming soon)
 ```
