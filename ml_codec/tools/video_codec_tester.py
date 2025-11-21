@@ -17,6 +17,8 @@ import numpy as np
 import av
 
 from ml_codec.metrics import calculate_psnr, calculate_ssim
+from ml_codec.registry import get_decoder, list_decoders
+import ml_codec.models  # Import to trigger registration
 
 
 class VideoCodecTester:
@@ -205,7 +207,8 @@ def main():
     parser.add_argument("--bitrate", type=int, default=300, help="Target bitrate in kbps")
     parser.add_argument("--fps", type=int, default=20, help="Frames per second")
     parser.add_argument("--max-frames", type=int, default=100, help="Maximum frames to process")
-    parser.add_argument("--output", help="Save decoded video to file (optional)")
+    parser.add_argument("--output", help="Save decoded/enhanced video to file (optional)")
+    parser.add_argument("--ml-decoder", help=f"ML decoder enhancer to apply (available: {', '.join(list_decoders())})")
     
     args = parser.parse_args()
     
@@ -225,23 +228,76 @@ def main():
     # Encode and decode
     decoded_frames, stats = tester.encode_decode_frames(original_frames)
     
-    # Calculate quality metrics
+    # Apply ML enhancement if requested
+    ml_decoder = None
+    enhanced_frames = None
+    ml_stats = {}
+    
+    if args.ml_decoder:
+        print(f"\n[VideoCodecTester] Applying ML enhancement: {args.ml_decoder}...")
+        try:
+            # Get decoder with any additional config
+            ml_decoder = get_decoder(args.ml_decoder)
+            ml_decoder.setup()
+            
+            # Enhance frames and measure latency
+            enhanced_frames = []
+            enhance_times = []
+            
+            for frame in decoded_frames:
+                enhance_start = time.perf_counter()
+                enhanced = ml_decoder.enhance(frame)
+                enhance_time = time.perf_counter() - enhance_start
+                enhanced_frames.append(enhanced)
+                enhance_times.append(enhance_time)
+            
+            ml_stats = {
+                'total_time': sum(enhance_times),
+                'avg_time_per_frame': sum(enhance_times) / len(enhance_times),
+                'min_time': min(enhance_times),
+                'max_time': max(enhance_times),
+            }
+            
+            print(f"[VideoCodecTester] ML enhancement complete:")
+            print(f"  Average: {ml_stats['avg_time_per_frame']*1000:.2f} ms/frame")
+            print(f"  Total: {ml_stats['total_time']:.2f}s")
+            
+        except Exception as e:
+            print(f"[VideoCodecTester] ERROR: ML enhancement failed: {e}")
+            print(f"  Available decoders: {list_decoders()}")
+            return
+    
+    # Calculate quality metrics for decoded frames
     print(f"\n[VideoCodecTester] Calculating quality metrics...")
-    psnr_values = []
-    ssim_values = []
+    decoded_psnr_values = []
+    decoded_ssim_values = []
     
     for i, (orig, decoded) in enumerate(zip(original_frames, decoded_frames)):
-        psnr_values.append(calculate_psnr(orig, decoded))
-        ssim_values.append(calculate_ssim(orig, decoded))
+        decoded_psnr_values.append(calculate_psnr(orig, decoded))
+        decoded_ssim_values.append(calculate_ssim(orig, decoded))
     
-    avg_psnr = float(np.mean(psnr_values))
-    avg_ssim = float(np.mean(ssim_values))
+    decoded_avg_psnr = float(np.mean(decoded_psnr_values))
+    decoded_avg_ssim = float(np.mean(decoded_ssim_values))
+    
+    # Calculate quality metrics for enhanced frames if available
+    enhanced_psnr_values = []
+    enhanced_ssim_values = []
+    
+    if enhanced_frames:
+        for i, (orig, enhanced) in enumerate(zip(original_frames, enhanced_frames)):
+            enhanced_psnr_values.append(calculate_psnr(orig, enhanced))
+            enhanced_ssim_values.append(calculate_ssim(orig, enhanced))
+        
+        enhanced_avg_psnr = float(np.mean(enhanced_psnr_values))
+        enhanced_avg_ssim = float(np.mean(enhanced_ssim_values))
     
     # Print results
     print(f"\n{'='*60}")
     print(f"CODEC TEST RESULTS")
     print(f"{'='*60}")
     print(f"Codec:              {args.codec.upper()}")
+    if args.ml_decoder:
+        print(f"ML Enhancer:        {args.ml_decoder}")
     print(f"Target Bitrate:     {args.bitrate} kbps")
     print(f"Actual Bitrate:     {stats['bitrate_actual']/1000:.1f} kbps")
     print(f"Frames Processed:   {len(original_frames)}")
@@ -250,23 +306,42 @@ def main():
     print(f"\nPerformance:")
     print(f"  Encode time:      {stats['encode_time_per_frame']*1000:.2f} ms/frame")
     print(f"  Decode time:      {stats['decode_time_per_frame']*1000:.2f} ms/frame")
-    print(f"  Total time:       {stats['encode_time_total']+stats['decode_time_total']:.2f}s")
-    print(f"\nQuality:")
-    print(f"  Average PSNR:     {avg_psnr:.2f} dB")
-    print(f"  Min PSNR:         {min(psnr_values):.2f} dB")
-    print(f"  Max PSNR:         {max(psnr_values):.2f} dB")
-    print(f"  Average SSIM:     {avg_ssim:.4f}")
-    print(f"  Min SSIM:         {min(ssim_values):.4f}")
-    print(f"  Max SSIM:         {max(ssim_values):.4f}")
+    if ml_stats:
+        print(f"  ML enhance time:  {ml_stats['avg_time_per_frame']*1000:.2f} ms/frame")
+    print(f"  Total time:       {stats['encode_time_total']+stats['decode_time_total']+ml_stats.get('total_time', 0):.2f}s")
+    print(f"\nQuality (Decoded):")
+    print(f"  Average PSNR:     {decoded_avg_psnr:.2f} dB")
+    print(f"  Min PSNR:         {min(decoded_psnr_values):.2f} dB")
+    print(f"  Max PSNR:         {max(decoded_psnr_values):.2f} dB")
+    print(f"  Average SSIM:     {decoded_avg_ssim:.4f}")
+    print(f"  Min SSIM:         {min(decoded_ssim_values):.4f}")
+    print(f"  Max SSIM:         {max(decoded_ssim_values):.4f}")
+    
+    if enhanced_frames:
+        psnr_improvement = enhanced_avg_psnr - decoded_avg_psnr
+        ssim_improvement = enhanced_avg_ssim - decoded_avg_ssim
+        print(f"\nQuality (Enhanced):")
+        print(f"  Average PSNR:     {enhanced_avg_psnr:.2f} dB ({psnr_improvement:+.2f} dB)")
+        print(f"  Min PSNR:         {min(enhanced_psnr_values):.2f} dB")
+        print(f"  Max PSNR:         {max(enhanced_psnr_values):.2f} dB")
+        print(f"  Average SSIM:     {enhanced_avg_ssim:.4f} ({ssim_improvement:+.4f})")
+        print(f"  Min SSIM:         {min(enhanced_ssim_values):.4f}")
+        print(f"  Max SSIM:         {max(enhanced_ssim_values):.4f}")
+    
     print(f"{'='*60}\n")
     
     # Save output video if requested
     if args.output:
+        # Determine which frames to save (enhanced if available, otherwise decoded)
+        frames_to_save = enhanced_frames if enhanced_frames else decoded_frames
+        suffix = "enhanced" if enhanced_frames else "decoded"
+        
         output_path = Path(args.output)
         
         # If a directory is provided, generate filename automatically.
         if output_path.is_dir():
-            filename = f"{Path(args.input).stem}_{args.codec}_{args.bitrate}kbps_decoded.mp4"
+            ml_part = f"_{args.ml_decoder}" if args.ml_decoder else ""
+            filename = f"{Path(args.input).stem}_{args.codec}_{args.bitrate}kbps{ml_part}_{suffix}.mp4"
             output_path = output_path / filename
         else:
             # Ensure .mp4 extension
@@ -275,16 +350,20 @@ def main():
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        print(f"[VideoCodecTester] Saving decoded video to {output_path}...")
-        height, width = decoded_frames[0].shape[:2]
+        print(f"[VideoCodecTester] Saving {suffix} video to {output_path}...")
+        height, width = frames_to_save[0].shape[:2]
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(str(output_path), fourcc, args.fps, (width, height))
         
-        for frame in decoded_frames:
+        for frame in frames_to_save:
             out.write(frame)
         
         out.release()
         print(f"[VideoCodecTester] Saved!")
+        
+        # Cleanup ML decoder
+        if ml_decoder:
+            ml_decoder.teardown()
 
 
 if __name__ == "__main__":
