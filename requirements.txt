@@ -1,0 +1,23 @@
+# ML Codec Research Framework - Requirements
+# For live video streaming ML codec research
+
+# Core ML/Deep Learning
+torch>=2.0.0  # PyTorch for neural network models
+# onnxruntime>=1.15.0  # ONNX Runtime for optimized inference (install when needed)
+
+# Video Processing
+av>=14.0.0  # PyAV for video codec operations (H.264, VP8, VP9)
+opencv-python>=4.8.0  # OpenCV for image processing and video I/O
+
+# WebRTC (for baseline streaming)
+aiortc>=1.13.0  # WebRTC implementation for Python
+
+# Scientific Computing
+numpy>=2.0.0  # Numerical operations
+
+# Quality Metrics (optional, for SSIM calculation)
+# scikit-image>=0.20.0  # For SSIM calculation (currently using custom implementation)
+
+# Note: scikit-image is not required as we have a custom SSIM implementation
+# Install manually if needed: pip install scikit-image
+

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..registry import register_decoder
+from .dummy_model import DummyNeuralDecoder
 from .enhancer import (
     BilateralEnhancer,
     CombinedEnhancer,
@@ -15,4 +16,7 @@ register_decoder("noop", NoOpEnhancer)
 register_decoder("bilateral", BilateralEnhancer)
 register_decoder("sharpen", SharpenEnhancer)
 register_decoder("combined", CombinedEnhancer)
+
+# Register neural network models
+register_decoder("dummy-neural", DummyNeuralDecoder)
 
