@@ -3,6 +3,7 @@
 
 # Core ML/Deep Learning
 torch>=2.0.0  # PyTorch for neural network models
+torchvision>=0.15.0  # PyTorch vision utilities (for VGG in perceptual loss)
 # onnxruntime>=1.15.0  # ONNX Runtime for optimized inference (install when needed)
 
 # Video Processing
@@ -20,4 +21,5 @@ numpy>=2.0.0  # Numerical operations
 
 # Note: scikit-image is not required as we have a custom SSIM implementation
 # Install manually if needed: pip install scikit-image
+
 

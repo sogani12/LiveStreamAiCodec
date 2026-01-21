@@ -51,3 +51,4 @@ def calculate_ssim(original: np.ndarray, compressed: np.ndarray) -> float:
 
 
 
+

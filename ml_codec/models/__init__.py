@@ -10,6 +10,7 @@ from .enhancer import (
     NoOpEnhancer,
     SharpenEnhancer,
 )
+from .residual_espcn import ResidualESPCNEnhancer
 
 # Register built-in enhancement models
 register_decoder("noop", NoOpEnhancer)
@@ -19,4 +20,5 @@ register_decoder("combined", CombinedEnhancer)
 
 # Register neural network models
 register_decoder("dummy-neural", DummyNeuralDecoder)
+register_decoder("residual-espcn", ResidualESPCNEnhancer)
 
