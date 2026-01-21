@@ -16,6 +16,9 @@ aiortc>=1.13.0  # WebRTC implementation for Python
 # Scientific Computing
 numpy>=2.0.0  # Numerical operations
 
+# Progress bars
+tqdm>=4.65.0  # Progress bars for dataset generation
+
 # Quality Metrics (optional, for SSIM calculation)
 # scikit-image>=0.20.0  # For SSIM calculation (currently using custom implementation)
 
