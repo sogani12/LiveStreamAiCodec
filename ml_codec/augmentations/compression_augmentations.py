@@ -109,12 +109,16 @@ def add_ringing_artifacts(
     
     # Apply pattern only near edges
     edge_mask = (edges > 30).astype(np.float32)
-    ringing_pattern = pattern.astype(np.float32) * edge_mask[:, :, np.newaxis]
+    # Multiply 2D arrays first, then expand to 3 channels
+    ringing_pattern_2d = pattern.astype(np.float32) * edge_mask
+    ringing_pattern = ringing_pattern_2d[:, :, np.newaxis]  # Shape: (h, w, 1)
     
     # Blend with original image
     result = image.astype(np.float32)
     ringing_effect = intensity * ringing_pattern * 0.1  # Scale down intensity
-    result = result + np.stack([ringing_effect] * 3, axis=2)
+    # Expand to 3 channels and add to result
+    ringing_effect_3d = np.repeat(ringing_effect, 3, axis=2)  # Shape: (h, w, 3)
+    result = result + ringing_effect_3d
     
     return np.clip(result, 0, 255).astype(np.uint8)
 

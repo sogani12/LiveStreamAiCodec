@@ -131,8 +131,9 @@ class LRHRDataset(Dataset):
             lr_img, hr_img = self._augment(lr_img, hr_img)
         
         # Convert to tensors and normalize to [0, 1]
-        lr_tensor = torch.from_numpy(lr_img).permute(2, 0, 1).float() / 255.0
-        hr_tensor = torch.from_numpy(hr_img).permute(2, 0, 1).float() / 255.0
+        # Use .copy() to ensure contiguous arrays (fixes negative stride issues from augmentation)
+        lr_tensor = torch.from_numpy(lr_img.copy()).permute(2, 0, 1).float() / 255.0
+        hr_tensor = torch.from_numpy(hr_img.copy()).permute(2, 0, 1).float() / 255.0
         
         return lr_tensor, hr_tensor
     
